@@ -30,15 +30,15 @@ Resources:
                 const inputBucketName = bucket.name;
                 const key = object.key;
 
-            // Perform your processing logic
-            // e.g invoke AWS Batch job with the input video
+    // Perform your processing logic
+    // e.g invoke AWS Batch job with the input video
 
-            // Generate frame every 30 seconds and upload to output bucket
+    // Generate frame every 30 seconds and upload to output bucket
 
-                const frames = generateFramesEvery30Seconds(key);
-                await Promise.all(frames.map((frame) => {
-                  const frameKey = `frames/${frame.timestamp}.jpg`;
-                  return s3.upload({
+              const frames = generateFramesEvery30Seconds(key);
+              await Promise.all(frames.map((frame) => {
+                const frameKey = `frames/${frame.timestamp}.jpg`;
+                return s3.upload({
                     Bucket: 'my-output-bucket',
                     Key: frameKey,
                     Body: frame.imageData
