@@ -1,0 +1,86 @@
+Resources:
+  InputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my_input_bucket
+
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my_output_bucket
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: my-lambda-function
+      Handler: index.handler
+      Runtime: nodejs14.x
+      Timeout: 500
+      Role:!GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const s3 = new AWS.S3();
+
+          exports.handler = async (event) => {
+            try {
+              const { Records } = event;
+              for (const record of Records) {
+                const { s3: { bucket,object } } = record;
+                const inputBucketName = bucket.name;
+                const key = object.key;
+
+            // Perform your processing logic
+            // e.g invoke AWS Batch job with the input video
+
+            // Generate frame every 30 seconds and upload to output bucket
+
+                const frames = generateFramesEvery30Seconds(key);
+                await Promise.all(frames.map((frame) => {
+                  const frameKey = `frames/${frame.timestamp}.jpg`;
+                  return s3.upload({
+                    Bucket: 'my-output-bucket',
+                    Key: frameKey,
+                    Body: frame.imageData
+                  }).promise();
+                }));
+              }
+            } catch (error) {
+              console.error(error);
+            }
+          };
+
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: my_lambda_execution_role
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect:Allow
+            Principal:
+             Service: lambda.amazonaws.com
+           Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambdaBasicExecutionRole
+      Policies:
+       - PolicyName:s3-access
+          PolicyDocument:
+            Statement:
+             - Effect: Allow
+               Action:
+                 - s3:GetObject
+                 - s3:PutObject
+               Resource: '*'
+
+  InputBucketNotificationConfiguration:
+    Type: AWS::S3::BucketNotificationConfiguration
+    Properties:
+      Bucket: !Ref InputBucket
+      NotificationConfiguration:
+        LambdaConfigurations:
+         - Event: s3:ObjectCreated:*
+           Function: !GetAtt LambdaFunction.Arn
